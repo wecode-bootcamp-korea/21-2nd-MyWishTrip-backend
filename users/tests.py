@@ -1,5 +1,4 @@
-from django.http import response
-import jwt, json 
+import jwt, json ,bcrypt
 
 from django.test   import TestCase, Client
 from unittest.mock import patch, MagicMock
@@ -61,3 +60,130 @@ class KakaoTestCase(TestCase):
 
 		self.assertEqual(response.json(), {'message':'KEY_ERROR'})
 		self.assertEqual(response.status_code, 400)
+
+class EmailSignupCase(TestCase):
+    def setUp(self):
+        User.objects.create(
+            name        = 'a',
+            email       = 'aa@naver.com',
+            password    = 'aa11!!',
+            signup_type = 'nomal'
+            )
+
+    def tearDown(self):
+        User.objects.all().delete()
+
+    def test_signup_success(self):
+        client = Client()
+        user = {
+            'name'        : 'b',
+            'email'       : 'bb@naver.com',
+            'password'    : 'aa11!!',
+            'signup_type' : 'nomal'
+        }
+        response = client.post('/users/signup', json.dumps(user),content_type='application/json')
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.json(),{'message':'SUCCESS'})
+
+    def test_invalid_email(self):
+        client = Client()
+        user = {
+            'name'        : 'a',
+            'email'       : 'aanaver.com',
+            'password'    : 'aa11!!',
+            'signup_type' : 'nomal'
+        }
+        response = client.post('/users/signup',json.dumps(user),content_type='application/json')
+        self.assertEqual(response.status_code,400)
+        self.assertEqual(response.json(), {'message':'INVALID_EMAIL'})
+    
+    def test_email_exist(self):
+        client = Client()
+        user = {
+            'name'        : 'a',
+            'email'       : 'aa@naver.com',
+            'password'    : 'aa11!!',
+            'signup_type' : 'nomal'
+        }
+        response = client.post('/users/signup',json.dumps(user),content_type='application/json')
+        self.assertEqual(response.status_code,400)
+        self.assertEqual(response.json(), {'message':'EMAIL_EXIST'})
+
+    def test_invalid_password(self):
+        client = Client()
+        user = {
+            'name'        : 'a',
+            'email'       : 'bb@naver.com',
+            'password'    : '11!!',
+            'signup_type' : 'nomal'
+        }
+        response = client.post('/users/signup',json.dumps(user),content_type='application/json')
+        self.assertEqual(response.status_code,400)
+        self.assertEqual(response.json(), {'message':'INVALID_PASSWORD'})
+
+    def test_key_error(self):
+        client = Client()
+        user = {
+            '이름'         : 'a',
+            'email'       : 'bb@naver.com',
+            'password'    : 'aa11!!',
+            'signup_type' : 'nomal'
+        }
+        response = client.post('/users/signup',json.dumps(user),content_type='application/json')
+        self.assertEqual(response.status_code,400)
+        self.assertEqual(response.json(), {'message':'KEY_ERROR'})
+
+class EmailSigninCase(TestCase):
+    def setUp(self):
+        User.objects.create(
+            name        = 'a',
+            email       = 'aa@naver.com',
+            password    = bcrypt.hashpw('aa11!!'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+            signup_type = 'nomal'
+            )
+
+    def tearDown(self):
+        User.objects.all().delete()
+
+    def test_signin_success(self):
+        client = Client()
+        user   = {
+            'email'    : 'aa@naver.com',
+            'password' : 'aa11!!'
+        }
+
+        test_user    = User.objects.get(email='aa@naver.com')
+        access_token = jwt.encode({'id':test_user.id},SECRET_KEY,ALGORITHM)
+        response     = client.post('/users/signin',json.dumps(user),content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(),{'message':'SUCCESS','token':access_token})
+
+    def test_invalid_user(self):
+        client = Client()
+        user = {
+            'email'    : 'bb@naver.com',
+            'password' : 'aa11!!'
+        }
+        response = client.post('/users/signin',json.dumps(user),content_type='application/json')
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(),{'message':'INVALID_USER'})
+
+    def test_invalid_password(self):
+        client = Client()
+        user = {
+            'email'    : 'aa@naver.com',
+            'password' : '1'
+        }
+        response = client.post('/users/signin',json.dumps(user),content_type='application/json')
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json(),{'message':'INVALID_PASSWORD'})
+
+    def test_key_error(self):
+        client = Client()
+        user = {
+            'name'     : 'a',
+            'password' : 'aa11!!'
+        }
+        response = client.post('/users/signin',json.dumps(user),content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(),{'message':'KEY_ERROR'})
