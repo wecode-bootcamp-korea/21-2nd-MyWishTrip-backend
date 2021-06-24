@@ -70,7 +70,7 @@ class Review(models.Model):
     contents     = models.TextField()
     score        = models.PositiveIntegerField(default=0)
     manager_text = models.TextField(null=True)
-    creat_at     = models.DateTimeField(auto_now_add=True)
+    create_at    = models.DateTimeField(auto_now_add=True)
     update_at    = models.DateTimeField(auto_now=True)
     user         = models.ForeignKey('users.User', on_delete=models.CASCADE)
     product      = models.ForeignKey(Product, on_delete=models.CASCADE)
