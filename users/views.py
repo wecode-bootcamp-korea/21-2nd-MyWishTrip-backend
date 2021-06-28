@@ -15,19 +15,20 @@ class KakaoSigninView(View):
 
             url     = "https://kapi.kakao.com/v2/user/me"
             headers = {'Authorization':f'Bearer {access_token}'}
-            if not requests.get(url, headers=headers):
-                return JsonResponse({'message':'INVALID_TOKEN'},status=401)
-
             response = requests.get(url, headers=headers).json()
 
-            user, is_created = User.objects.get_or_create(
-                    email       = response['kakao_account']['email'],
-                    name        = response['kakao_account']['profile']['nickname'],
-                    social_id   = response.get('id'),
-                    signup_type = 'kakao'
+            if response.get('id'):
+                user, is_created = User.objects.get_or_create(
+                    email        = response['kakao_account']['email'],
+                    name         = response['kakao_account']['profile']['nickname'],
+                    social_id    = response.get('id'),
+                    signup_type  = 'kakao'
                     )
-            token = jwt.encode({'id':user.id}, SECRET_KEY, algorithm=ALGORITHM)
-            return JsonResponse({'token': token}, status = 200)
+                token = jwt.encode({'id':user.id}, SECRET_KEY, algorithm=ALGORITHM)
+                return JsonResponse({'token': token}, status = 200)
+
+            if response['code'] == -401:
+                return JsonResponse({'message':'INVALID_TOKEN'}, status=401)
 
         except KeyError:
             return JsonResponse({'message':'KEY_ERROR'}, status=400)
@@ -81,6 +82,3 @@ class EmailSigninView(View):
         
         except KeyError:
             return JsonResponse({'message': 'KEY_ERROR'}, status=400)
-
-
-
