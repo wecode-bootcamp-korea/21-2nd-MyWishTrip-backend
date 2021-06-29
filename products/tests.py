@@ -1,8 +1,8 @@
 from datetime import datetime
 from decimal  import Decimal
+
 import json
-from unittest.loader import defaultTestLoader
-from django.http import response
+
 from django.test import TestCase, Client
 
 from .models      import Date, Option, Product, Region, Review, ReviewImage,SubCategory,MainCategory
@@ -70,6 +70,7 @@ class ProductTestCase(TestCase):
             'total_score'  : 1.0,
             'total_review' : 1,
             'reviews'      : [{
+                'user'        : 'test',
                 'contents'    : 'test',
                 'score'       : 1,
                 'manager_text': 'test',
@@ -154,4 +155,61 @@ class OptionTestCase(TestCase):
 
         self.assertEqual(response.json(),data)
         self.assertEqual(response.status_code, 404)
+        
+class ReviewTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        MainCategory.objects.create(id=1,name='test')
+        SubCategory.objects.create(id=1,name='test', maincategory_id=1)
+        Region.objects.create(id=1,name='test')
+        User.objects.create(id=1,name='test', password='123')
+        Product.objects.create(
+            id=1,
+            name='test',
+            price=Decimal(123.00),
+            discount=0.1,
+            main_image='test',
+            detail_image='test',
+            subcategory_id=1,
+            region_id=1
+        )
+        Review.objects.create(
+            id=1,
+            contents='test',
+            score=1,
+            manager_text='test',
+            product_id=1,
+            user_id=1
+        )
+        ReviewImage.objects.create(id=1, image='test', review_id=1)
+    
+    def tearDown(self):
+        User.objects.all().delete()
+        MainCategory.objects.all().delete()
+        SubCategory.objects.all().delete()
+        Region.objects.all().delete()
+        Product.objects.all().delete()
+        Review.objects.all().delete()
+        ReviewImage.objects.all().delete()
+    
+    def test_review_get(self):
+        client = Client()
+        data = [{
+                'user'        : 'test',
+                'contents'    : 'test',
+                'score'       : 1,
+                'manager_text': 'test',
+                'create_at'   : '',
+                'update_at'   : '',
+                'images'       : ['test']
+            }]
+
+        response      = client.get('/products?product_id=1&page=1&page_size=1')
+        response_data = response.json()
+        
+        data[0]['create_at'] = response_data['reviews'][0]['create_at']
+        data[0]['update_at'] = response_data['reviews'][0]['update_at']
+
+        self.assertEqual(response.json(),{'reviews':data})
+        self.assertEquals(response.status_code, 200)
         
